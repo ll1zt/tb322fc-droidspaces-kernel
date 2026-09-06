@@ -1,5 +1,7 @@
 # Y700 四代 (TB322FC) 指南
 
+> 🌐 [English](GUIDE_EN.md) | 简体中文
+
 > 依据：XDA thread 4743906 全 5 页（Wayback 2026-04-25）+ LTBox 项目/note.com 实测教程 + 镜像站核实
 > 当前设备：ZUXOS **1.1.11.120**（ST_250727），BL 锁定
 

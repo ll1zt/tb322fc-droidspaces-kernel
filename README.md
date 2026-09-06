@@ -1,5 +1,7 @@
 # Lenovo Legion Y700 Gen 4 (TB322FC) — Droidspaces Kernel
 
+> 🌐 [English](README_EN.md) | 简体中文
+
 在 **bootloader 保持锁定** 的 Y700 四代上运行 [Droidspaces](https://github.com/ravindu644/Droidspaces-OSS) 容器的自定义 GKI 内核 + KernelSU-Next root 方案。
 
 联想出厂时使用**公共 AOSP testkey** 对这台设备的启动链进行签名，因此用该密钥重新签名的自定义内核可以在**锁定**的引导加载程序上通过 AVB 验证；结合高通 **EDL (9008)** 写入（通过 [LTBox](https://github.com/miner7222/LTBox)），即可获得内核级 root + Droidspaces，**无需解锁**——不会清除数据，也没有解锁警告。内核必须使用分支固定的**精确 AOSP clang (r510928)** 构建，否则厂商模块会因 KMI 契约而损坏。
@@ -21,7 +23,7 @@
 
 ```bash
 # 1) 下载预编译 boot 镜像
-curl -LO https://github.com/<you>/tb322fc-droidspaces-kernel/raw/main/images/boot-tb322fc-droidspaces-v4.img
+curl -LO https://github.com/ll1zt/tb322fc-droidspaces-kernel/raw/main/images/boot-tb322fc-droidspaces-v4.img
 sha256sum boot-tb322fc-droidspaces-v4.img
 # bf337d09908ca477ed16dd6e322c45085485685681f72763bd6d02f84596670b
 
@@ -53,6 +55,7 @@ adb shell su -c "cat /proc/config.gz" > work/stock-config.gz && gunzip work/stoc
 ## 目录结构
 
 ```
+README_EN.md                             English documentation
 images/boot-tb322fc-droidspaces-v4.img   预编译镜像 + sha256sums.txt
 patches/0001-kabi-sysvipc-6.6.patch      SYSVIPC kABI 补丁（6.6 适配版）
 patches/droidspaces.config.fragment      配置增量（叠加在原厂 config.gz 上）
@@ -60,6 +63,7 @@ scripts/get-toolchain.sh                 下载 AOSP clang r510928
 scripts/build-kernel.sh                  一键构建
 scripts/package-boot.sh                  打包 + testkey 签名
 docs/GUIDE.md                            免解 BL root 操作指南（LTBox/EDL 实测）
+docs/GUIDE_EN.md                         免解 BL root 操作指南（英文）
 docs/kernel-config-v4                    最终内核配置（7766 行）
 ```
 
