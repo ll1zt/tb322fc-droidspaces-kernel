@@ -1,0 +1,9 @@
+内核补丁、配置片段与构建脚本遵循 Linux 内核许可证：
+GPL-2.0 WITH Linux-syscall-note
+(https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
+
+本仓库包含对 Linux 内核源码（aosp/kernel/common, android15-6.6）的修改补丁，
+补丁部分以 GPL-2.0 分发。文档与脚本以相同许可证分发。
+
+KernelSU-Next、LTBox、AOSP clang 等第三方组件遵循其各自许可证。
+AOSP testkey 为 Android 开源项目公开测试密钥（external/avb/test/data/）。

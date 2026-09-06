@@ -1,0 +1,29 @@
+# 构建工作区（体积大 / 可再生 / 含设备私有数据）
+work/
+toolchain/
+out/
+
+# 内核树产物（如在工作区内构建）
+*.o
+*.o.d
+*.cmd
+vmlinux*
+System.map
+arch/arm64/boot/Image*
+!.gitignore
+
+# 中间/实验镜像与 dump（仅正式版进 images/）
+*.img
+!images/*.img
+*.7z
+*.zip
+
+# 设备私有 dump（含唯一密钥/序列号信息，勿提交）
+stock-config*
+boot_a_dump*
+vbmeta_*dump*
+*.der
+
+# 临时
+*.log
+.DS_Store
