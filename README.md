@@ -1,18 +1,19 @@
 # Lenovo Legion Y700 Gen 4 (TB322FC) — Droidspaces Kernel
 
-在 **bootloader 保持锁定** 的 Y700 四代上运行 [Droidspaces](https://github.com/ravindu644/Droidspaces-OSS) 容器的自定义 GKI 内核 + KernelSU-Next root 完整方案。
+在 **bootloader 保持锁定** 的 Y700 四代上运行 [Droidspaces](https://github.com/ravindu644/Droidspaces-OSS) 容器的自定义 GKI 内核 + KernelSU-Next root 方案。
 
-English TL;DR: Lenovo ships this device's boot chain signed with the **public AOSP testkey**, so a custom kernel re-signed with that key passes AVB on a **locked** bootloader; combined with Qualcomm **EDL (9008)** writes (via [LTBox](https://github.com/miner7222/LTBox)), you get kernel-level root + Droidspaces **without unlocking** — no data wipe, no unlock warning. The kernel must be built with the **exact AOSP clang (r510928)** pinned by the branch, or vendor modules break (KMI contract).
+联想出厂时使用**公共 AOSP testkey** 对这台设备的启动链进行签名，因此用该密钥重新签名的自定义内核可以在**锁定**的引导加载程序上通过 AVB 验证；结合高通 **EDL (9008)** 写入（通过 [LTBox](https://github.com/miner7222/LTBox)），即可获得内核级 root + Droidspaces，**无需解锁**——不会清除数据，也没有解锁警告。内核必须使用分支固定的**精确 AOSP clang (r510928)** 构建，否则厂商模块会因 KMI 契约而损坏。
 
 | 项 | 值 |
 |---|---|
 | 设备 | Lenovo Legion Y700 2025 / **TB322FC**（骁龙 8 Elite, SM8750） |
-| 系统 | ZUXOS 1.5.10.117（Android 16）实测；1.1.11.073/076 亦可 |
-| 内核 | `6.6.89-android15-8-g14220ae4ce65-ab13680582-4k`（= 设备精确 commit） |
-| root | KernelSU-Next v3.3.0（**LKM**，在 init_boot，不随 boot 丢失） |
-| BL | **locked** ✅（Play Integrity 友好） |
-| WiFi/BT | ✅ 正常（bcmdhd→实为高通 cnss2/cfg80211 栈） |
-| Droidspaces | ✅ check 通过 |
+| 系统 | ZUXOS 1.5.10.117（Android 16）实测 |
+| 内核 | `6.6.89-android15-8-g14220ae4ce65-ab13680582-4k` |
+| root | KernelSU-Next v3.3.0（**LKM**，修补 init_boot） |
+| BL | **locked** ✅ |
+| WiFi/BT | ✅ 正常（高通 cnss2/cfg80211 栈） |
+| GPU | ✅ Turnip 硬件加速（Mesa 26.3.0-devel，glmark2 2714） |
+| Droidspaces | ✅ check 通过（v6.5.0 全绿） |
 
 ---
 
@@ -27,33 +28,27 @@ sha256sum boot-tb322fc-droidspaces-v4.img
 # 2) LTBox → Advanced → 分区写入 → boot_a ← 该文件（自动进 EDL）→ 重启
 ```
 
-未 root 的设备：先按 [docs/GUIDE-macOS.md](docs/GUIDE-macOS.md) / LTBox 完成免解 BL root。
+未 root 的设备：先按 [docs/GUIDE.md](docs/GUIDE.md) 完成 LTBox 免解锁 root。
 
 ## 从零构建
 
 ```bash
-./scripts/get-toolchain.sh ./toolchain      # AOSP clang r510928（必须！见下文坑#2）
+./scripts/get-toolchain.sh ./toolchain      # AOSP clang r510928（分支钉死版本，KMI 契约，必须）
 # 从设备抓原厂配置（root 后）：
 adb shell su -c "cat /proc/config.gz" > work/stock-config.gz && gunzip work/stock-config.gz
 ./scripts/build-kernel.sh ./work ./toolchain/clang18
 ./scripts/package-boot.sh work/kernel-6.6/arch/arm64/boot/Image out/boot-ds.img
 ```
 
-## 工作原理（为什么免解锁也能刷内核）
+构建要点：
 
-```
-联想固件 AVB 全链 = AOSP testkey 签名（公钥 sha1 2597c218...，私钥在 AOSP 源码公开）
-vbmeta 中 boot = Chain Partition 描述符 → 只认"boot footer 由 testkey 签名"
-  → 自定义内核 + testkey 重签 footer = 锁机可刷
-写入通道 = 高通 EDL/9008（锁机可用；LTBox/qdlrs 均支持）
-```
+1. 配置基底是设备原厂 `/proc/config.gz` 叠加 `patches/droidspaces.config.fragment`，不是 `gki_defconfig`。
+2. `CONFIG_SYSVIPC=y` 必须搭配 kABI 补丁（`patches/0001-kabi-sysvipc-6.6.patch`，6.6 上手动适配 RESERVE 6/7/8），否则 vendor 模块崩溃 bootloop。
+3. 工具链必须用分支 `build.config.constants` 钉死的 `clang-r510928`，其他 clang 产出的内核与预编译 vendor 模块不兼容。
+4. vermagic 用 `make KERNELRELEASE=<完整字符串>` 直通（6.6 的新 setlocalversion 已废除 `.scmversion`），与设备逐字符一致。
+5. `CONFIG_MODULE_SIG=y` 且 `MODULE_SIG_KEY` 指向 testkey 证书。不能直接关闭 `MODULE_SIG`：那会级联关闭 `SYSTEM_DATA_VERIFICATION`，`verify_pkcs7_signature` 不再导出，cfg80211 加载失败。
+6. boot 的 AVB footer 必须带原厂 3 个 Prop 描述符（`com.android.build.boot.fingerprint` / `os_version` / `security_patch`），`package-boot.sh` 已内置。
 
-## 四个关键坑（全部实测踩中）
-
-1. **AVB footer 必须带原厂 Prop 描述符**（`com.android.build.boot.fingerprint/os_version/security_patch`）—— 缺了它们 ABL 报"系统损坏"。`package-boot.sh` 已内置。
-2. **工具链版本是 KMI 契约的一部分**：必须用分支钉死的 `clang-r510928`（`build.config.constants`）。用上游 clang 21 编译 → 与预编译 vendor 模块不兼容 → **logo bootloop**（配置完全原样也 loop，对照实验证实）。
-3. **不能简单关 `CONFIG_MODULE_SIG`**：它会级联关掉 `SYSTEM_DATA_VERIFICATION` → `verify_pkcs7_signature` 不再导出 → cfg80211 加载失败 → cnd 崩溃 → **WiFi 挂**。正解：`MODULE_SIG=y` + `MODULE_SIG_KEY` 指向 testkey（自签证书）。
-4. **vermagic 伪装**：6.6 新 setlocalversion 废除了 `.scmversion` → 用 `make KERNELRELEASE=<完整字符串>` 直通（Kleaf 同款）。注：MODVERSIONS 下 vermagic 版本部分其实不严格比对（原厂模块 vermagic 是 `maybe-dirty` 也能加载），但伪装无害且推荐。
 
 ## 目录结构
 
@@ -64,9 +59,7 @@ patches/droidspaces.config.fragment      配置增量（叠加在原厂 config.g
 scripts/get-toolchain.sh                 下载 AOSP clang r510928
 scripts/build-kernel.sh                  一键构建
 scripts/package-boot.sh                  打包 + testkey 签名
-docs/TASK.md                             工程任务书（根因全记录）
-docs/RESEARCH.md                         解锁/root 调研（XDA/官方核实）
-docs/GUIDE-macOS.md                      免解 BL root 操作指南
+docs/GUIDE.md                            免解 BL root 操作指南（LTBox/EDL 实测）
 docs/kernel-config-v4                    最终内核配置（7766 行）
 ```
 

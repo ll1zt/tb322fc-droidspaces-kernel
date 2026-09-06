@@ -38,7 +38,8 @@ fi
 # 3) 配置 = 原厂 config.gz + fragment
 cp "$WORK/stock-config.txt" .config
 scripts/kconfig/merge_config.sh -m .config "$HERE/patches/droidspaces.config.fragment"
-# testkey 证书（模块签名 + PKCS7 导出链，见 README 的"MODULE_SIG 级联"一节）
+# testkey 证书：同时用作 AVB footer 签名密钥与 CONFIG_MODULE_SIG_KEY
+# （需含自签证书，裸私钥报 PEM 错；保持 MODULE_SIG=y 以保留 PKCS7 符号导出链）
 [[ -f certs/testkey_rsa4096.pem ]] || {
   curl -s "https://android.googlesource.com/platform/external/avb/+/refs/heads/main/test/data/testkey_rsa4096.pem?format=TEXT" \
     | base64 -d > /tmp/tk.pem
