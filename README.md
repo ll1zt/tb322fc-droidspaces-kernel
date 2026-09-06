@@ -23,7 +23,7 @@
 
 ```bash
 # 1) 下载预编译 boot 镜像
-curl -LO https://github.com/ll1zt/tb322fc-droidspaces-kernel/raw/main/images/boot-tb322fc-droidspaces-v4.img
+curl -LO https://github.com/ll1zt/tb322fc-droidspaces-kernel/releases/download/tb322fc-v4/boot-tb322fc-droidspaces-v4.img
 sha256sum boot-tb322fc-droidspaces-v4.img
 # bf337d09908ca477ed16dd6e322c45085485685681f72763bd6d02f84596670b
 
